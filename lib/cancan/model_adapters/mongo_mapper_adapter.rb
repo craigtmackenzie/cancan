@@ -41,24 +41,22 @@ module CanCan
           # there are no rules with empty conditions
           rules = @rules.reject { |rule| rule.conditions.empty? }
           process_can_rules = @rules.count == rules.count
-          rules.inject(@model_class) do |records, rule|
+          conditions = rules.map do |rule|
             if process_can_rules && rule.base_behavior
               if rule.conditions.is_a?(Hash)
-                records.where rule.conditions
+                condition = rule.conditions
               else
-                records.where rule.conditions.criteria.source
+                condition = rule.conditions.criteria.source
               end
             elsif !rule.base_behavior
-              ex_conditions = rule.conditions.inject({}) do |exclude_rules, (k, v)|
+              condition = rule.conditions.inject({}) do |exclude_rules, (k, v)|
                 exclude_rules[k] = {:$ne => v}
                 exclude_rules
               end
-
-              records.where(ex_conditions)
-            else
-              records
             end
+            condition
           end
+          @model_class.where(:$or => conditions.reject(&:nil?))
         end
       end
     end
